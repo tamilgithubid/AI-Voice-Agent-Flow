@@ -185,3 +185,70 @@ body {
   0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
   100% { transform: translate(50px, -30px) scale(1.1); opacity: 0.7; }
 }
+
+/* ===== TABLET — slightly reduce effects ===== */
+@media (max-width: 768px) {
+  .nebula-layer::before {
+    width: 500px;
+    height: 500px;
+    filter: blur(40px);
+  }
+
+  .nebula-layer::after {
+    width: 450px;
+    height: 450px;
+    filter: blur(45px);
+  }
+}
+
+/* ===== MOBILE — reduce heavy effects for performance ===== */
+@media (max-width: 480px) {
+  #root::before {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  #root::after {
+    height: 200px;
+    bottom: -20px;
+    filter: blur(0.5px);
+  }
+
+  .nebula-layer::before {
+    width: 300px;
+    height: 300px;
+    filter: blur(25px);
+    opacity: 0.4;
+  }
+
+  .nebula-layer::after {
+    width: 250px;
+    height: 250px;
+    filter: blur(30px);
+    opacity: 0.4;
+  }
+
+  .shooting-star-layer::before,
+  .shooting-star-layer::after {
+    width: 80px;
+  }
+}
+
+/* ===== SMALL MOBILE — minimal effects ===== */
+@media (max-width: 375px) {
+  #root::after {
+    height: 150px;
+    bottom: -10px;
+    opacity: 0.6;
+  }
+
+  .nebula-layer::before,
+  .nebula-layer::after {
+    display: none;
+  }
+
+  .shooting-star-layer::before,
+  .shooting-star-layer::after {
+    display: none;
+  }
+}

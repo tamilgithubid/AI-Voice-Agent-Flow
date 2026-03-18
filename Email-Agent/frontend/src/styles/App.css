@@ -1258,27 +1258,251 @@
 .chat-window::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.4); }
 
 /* ========================================
-   RESPONSIVE
+   RESPONSIVE — Tablet (769px – 1024px)
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .app { max-width: 100%; padding: 16px; }
+  .hud-corner { display: none; }
+
+  .app-header { padding: 20px 0 14px; }
+  .app-header h1 { font-size: 26px; letter-spacing: 2px; }
+  .app-header p { font-size: 12px; }
+
+  .agent-flow-canvas { padding: 14px 10px 10px; border-radius: 16px; }
+  .chat-window { max-height: 280px; }
+
+  .voice-button-wrapper { width: 230px; height: 230px; }
+  .voice-button { width: 108px; height: 108px; }
+  .voice-ring-1 { width: 212px; height: 212px; }
+  .voice-ring-2 { width: 180px; height: 180px; }
+  .voice-ring-3 { width: 148px; height: 148px; }
+  .wave-1 { width: 128px; height: 128px; }
+  .wave-2 { width: 142px; height: 142px; }
+  .wave-3 { width: 156px; height: 156px; }
+  .wave-4 { width: 170px; height: 170px; }
+  .wave-5 { width: 190px; height: 190px; }
+
+  .orb-icon { width: 28px; height: 28px; }
+  .orb-label { font-size: 11px; letter-spacing: 1.5px; }
+
+  .text-input-form { max-width: 100%; }
+  .controls { gap: 12px; padding: 14px 0; }
+}
+
+/* ========================================
+   RESPONSIVE — Mobile (≤ 768px)
    ======================================== */
 
 @media (max-width: 768px) {
+  .app {
+    padding: 10px 10px 0;
+    padding-top: max(10px, env(safe-area-inset-top));
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
   .hud-corner { display: none; }
-  .app-header h1 { font-size: 22px; letter-spacing: 1px; }
+
+  /* Scrollable content — padding for fixed input at bottom */
+  .app-main {
+    gap: 10px;
+    padding-bottom: 70px;
+    flex: 1;
+  }
+
+  .app-header { padding: 8px 0 6px; }
+  .app-header h1 { font-size: 18px; letter-spacing: 1.2px; }
+  .app-header p { font-size: 9px; letter-spacing: 1px; margin-top: 2px; }
+
+  /* Pipeline — vertical layout, no horizontal scroll */
+  .agent-flow-canvas {
+    padding: 8px 6px 6px;
+    border-radius: 12px;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+  }
+  .flow-svg { min-width: unset; width: 100%; }
+  .flow-title { font-size: 8px; letter-spacing: 1.5px; padding: 0 4px 4px; }
+  .flow-title-dot { width: 5px; height: 5px; }
+  .flow-badge { font-size: 7.5px; padding: 1px 7px; }
+
+  /* Chat */
+  .chat-window {
+    max-height: 200px;
+    min-height: 100px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+  .chat-window.empty { min-height: 70px; }
+  .empty-state p { font-size: 12px; }
+  .empty-state .example { font-size: 12px; }
+  .message { gap: 8px; margin-bottom: 10px; }
+  .message-avatar { width: 28px; height: 28px; font-size: 8px; }
+  .message-content { padding: 8px 12px; border-radius: 10px; max-width: 85%; }
+  .message-content p { font-size: 13px; line-height: 1.5; }
+  .message-time { font-size: 8px; }
+
+  /* Confirmation card */
+  .email-confirmation { padding: 14px; border-radius: 12px; }
+  .email-confirmation h3 { font-size: 11px; letter-spacing: 1.5px; }
+  .email-field { margin-bottom: 8px; }
+  .email-field label { font-size: 9px; }
+  .email-field span { font-size: 13px; }
+  .email-field input,
+  .email-field textarea { padding: 10px 10px; font-size: 13px; }
+  .email-body { font-size: 13px; padding: 10px; }
+  .email-actions { flex-direction: column; gap: 8px; }
+  .btn { padding: 10px 16px; font-size: 12px; min-height: 44px; border-radius: 8px; }
+  .enhance-info { font-size: 12px; padding: 8px 12px; }
+  .permission-banner { font-size: 12px; padding: 10px 14px; }
+
+  /* ===== CONTROLS — Voice button stays big, input fixed at bottom ===== */
+  .controls {
+    gap: 8px;
+    padding: 8px 0 0;
+  }
+
+  /* Big voice button — same cinematic orb, slightly scaled for mobile */
+  .voice-button-wrapper { width: 190px; height: 190px; }
+  .voice-button {
+    width: 88px;
+    height: 88px;
+    box-shadow:
+      0 0 35px rgba(99, 102, 241, 0.25),
+      0 0 70px rgba(6, 182, 212, 0.12),
+      0 0 100px rgba(139, 92, 246, 0.08),
+      inset 0 0 25px rgba(99, 102, 241, 0.2);
+  }
+  .voice-button svg { width: 28px; height: 28px; }
+  .orb-icon { width: 28px; height: 28px; }
+  .orb-label { font-size: 10px; letter-spacing: 1.2px; }
+  .orb-core { width: 38px; height: 38px; }
+
+  /* Rotating rings — full visual impact */
+  .voice-ring-1 { width: 176px; height: 176px; }
+  .voice-ring-2 { width: 148px; height: 148px; }
+  .voice-ring-3 { width: 120px; height: 120px; }
+
+  /* Wave rings — beautiful expanding waves */
+  .wave-1 { width: 108px; height: 108px; }
+  .wave-2 { width: 122px; height: 122px; }
+  .wave-3 { width: 136px; height: 136px; }
+  .wave-4 { width: 150px; height: 150px; }
+  .wave-5 { width: 168px; height: 168px; }
+
+  /* Status bar */
+  .status-bar { font-size: 10px; letter-spacing: 0.8px; }
+  .status-dot { width: 6px; height: 6px; }
+
+  /* ===== FIXED BOTTOM TEXT INPUT ===== */
+  .text-input-form {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-width: 100%;
+    border-radius: 0;
+    background: rgba(5, 5, 21, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(139, 92, 246, 0.15);
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.5);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .text-input { padding: 14px 16px; font-size: 15px; min-height: 48px; }
+  .btn-text-send { padding: 14px 20px; font-size: 12px; min-height: 48px; }
+
+  /* Splash */
+  .splash-mic-icon { width: 100px; height: 100px; margin-bottom: 18px; }
+  .splash-mic-icon svg { width: 42px; height: 42px; }
+  .splash-content h2 { font-size: 18px; letter-spacing: 1px; }
+  .splash-content p { font-size: 12px; }
 }
 
-@media (max-width: 600px) {
-  .app { padding: 12px; }
-  .app-header h1 { font-size: 18px; letter-spacing: 1px; }
-  .agent-flow-canvas {
-    padding: 10px 4px 6px;
-    overflow-x: auto;
+/* ========================================
+   RESPONSIVE — Small Mobile (≤ 375px)
+   ======================================== */
+
+@media (max-width: 375px) {
+  .app { padding: 8px 8px 0; }
+
+  .app-header { padding: 6px 0 4px; }
+  .app-header h1 { font-size: 15px; letter-spacing: 0.8px; }
+  .app-header p { font-size: 8px; }
+
+  .chat-window { max-height: 170px; min-height: 80px; padding: 8px; }
+  .message-avatar { width: 24px; height: 24px; font-size: 7px; }
+  .message-content p { font-size: 12px; }
+
+  /* Voice button — slightly smaller but still big & cinematic */
+  .voice-button-wrapper { width: 160px; height: 160px; }
+  .voice-button { width: 74px; height: 74px; }
+  .voice-button svg { width: 24px; height: 24px; }
+  .orb-icon { width: 24px; height: 24px; }
+  .orb-label { font-size: 9px; letter-spacing: 1px; }
+  .orb-core { width: 32px; height: 32px; }
+
+  .voice-ring-1 { width: 148px; height: 148px; }
+  .voice-ring-2 { width: 126px; height: 126px; }
+  .voice-ring-3 { width: 104px; height: 104px; }
+
+  .wave-1 { width: 92px; height: 92px; }
+  .wave-2 { width: 104px; height: 104px; }
+  .wave-3 { width: 116px; height: 116px; }
+  .wave-4 { width: 128px; height: 128px; }
+  .wave-5 { width: 142px; height: 142px; }
+
+  .text-input { font-size: 14px; padding: 12px 14px; }
+  .btn-text-send { padding: 12px 14px; font-size: 11px; }
+  .status-bar { font-size: 9px; }
+}
+
+/* ========================================
+   RESPONSIVE — Landscape phones
+   ======================================== */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-header { padding: 4px 0 2px; }
+  .app-header h1 { font-size: 16px; }
+  .app-header p { display: none; }
+
+  .agent-flow-canvas { padding: 4px 4px 4px; }
+  .chat-window { max-height: 100px; min-height: 50px; }
+
+  .voice-button-wrapper { width: 120px; height: 120px; }
+  .voice-button { width: 56px; height: 56px; }
+  .voice-ring-1 { width: 110px; height: 110px; }
+  .voice-ring-2 { width: 94px; height: 94px; }
+  .voice-ring-3 { width: 78px; height: 78px; }
+
+  .app-main { padding-bottom: 60px; }
+}
+
+/* ========================================
+   TOUCH DEVICE ENHANCEMENTS
+   ======================================== */
+
+@media (hover: none) and (pointer: coarse) {
+  .voice-button:hover:not(:disabled) {
+    transform: none;
+    box-shadow:
+      0 0 40px rgba(99, 102, 241, 0.25),
+      0 0 80px rgba(6, 182, 212, 0.12),
+      0 0 120px rgba(139, 92, 246, 0.08),
+      inset 0 0 30px rgba(99, 102, 241, 0.2);
   }
-  .flow-svg { min-width: 600px; }
-  .email-actions { flex-direction: column; }
-  .voice-button-wrapper { width: 200px; height: 200px; }
-  .voice-button { width: 90px; height: 90px; }
-  .voice-ring-1 { width: 180px; height: 180px; }
-  .voice-ring-2 { width: 150px; height: 150px; }
-  .voice-ring-3 { width: 120px; height: 120px; }
-  .text-input-form { max-width: 100%; }
+
+  .btn { min-height: 44px; }
+  .btn-text-send { min-height: 44px; }
+  .text-input { min-height: 44px; }
+
+  .voice-button:active:not(:disabled) {
+    transform: scale(0.96);
+    transition: transform 0.1s;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+    transition: transform 0.1s;
+  }
 }

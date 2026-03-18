@@ -1,8 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import AgentNode from './AgentNode';
+
+// ---- Hook: detect mobile ----
+function useIsMobile(breakpoint = 480) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= breakpoint);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= breakpoint);
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [breakpoint]);
+  return isMobile;
+}
 
 // ---- Pipeline Configurations ----
 
+// Desktop: horizontal layout
 const EMAIL_NODES = [
   { id: 'voice',     label: 'Voice Input',       icon: 'mic',      color: '#3b82f6', x: 70,  y: 80 },
   { id: 'intent',    label: 'Intent Detector',    icon: 'brain',    color: '#8b5cf6', x: 210, y: 60 },
@@ -21,6 +33,27 @@ const WHATSAPP_NODES = [
   { id: 'validator', label: 'Validator',           icon: 'check',    color: '#10b981', x: 630, y: 80 },
   { id: 'whatsapp',  label: 'WhatsApp Send',      icon: 'whatsapp', color: '#25D366', x: 350, y: 185 },
   { id: 'response',  label: 'Voice Response',     icon: 'speaker',  color: '#06b6d4', x: 490, y: 185 },
+];
+
+// Mobile: vertical zigzag layout (fits 320px wide viewport)
+const EMAIL_NODES_MOBILE = [
+  { id: 'voice',     label: 'Voice Input',       icon: 'mic',      color: '#3b82f6', x: 80,  y: 50 },
+  { id: 'intent',    label: 'Intent Detector',    icon: 'brain',    color: '#8b5cf6', x: 200, y: 110 },
+  { id: 'composer',  label: 'Msg Composer',       icon: 'compose',  color: '#a855f7', x: 80,  y: 170 },
+  { id: 'router',    label: 'Action Router',      icon: 'route',    color: '#06b6d4', x: 200, y: 230 },
+  { id: 'validator', label: 'Validator',          icon: 'check',    color: '#10b981', x: 80,  y: 290 },
+  { id: 'gmail',     label: 'Gmail Send',         icon: 'mail',     color: '#ef4444', x: 200, y: 350 },
+  { id: 'response',  label: 'Voice Response',     icon: 'speaker',  color: '#06b6d4', x: 80,  y: 410 },
+];
+
+const WHATSAPP_NODES_MOBILE = [
+  { id: 'voice',     label: 'Voice Input',        icon: 'mic',      color: '#3b82f6', x: 80,  y: 50 },
+  { id: 'intent',    label: 'Intent Detector',     icon: 'brain',    color: '#8b5cf6', x: 200, y: 110 },
+  { id: 'composer',  label: 'Msg Composer',        icon: 'message',  color: '#25D366', x: 80,  y: 170 },
+  { id: 'router',    label: 'Action Router',       icon: 'route',    color: '#06b6d4', x: 200, y: 230 },
+  { id: 'validator', label: 'Validator',           icon: 'check',    color: '#10b981', x: 80,  y: 290 },
+  { id: 'whatsapp',  label: 'WhatsApp Send',      icon: 'whatsapp', color: '#25D366', x: 200, y: 350 },
+  { id: 'response',  label: 'Voice Response',     icon: 'speaker',  color: '#06b6d4', x: 80,  y: 410 },
 ];
 
 const EMAIL_CONNECTIONS = [
@@ -45,8 +78,11 @@ export const EMAIL_STEPS = ['voice', 'intent', 'composer', 'router', 'validator'
 export const WHATSAPP_STEPS = ['voice', 'intent', 'composer', 'router', 'validator', 'whatsapp', 'response'];
 
 function AgentFlowCanvas({ activeStep, completedSteps = [], errorStep, pipelineType }) {
+  const isMobile = useIsMobile();
   const isWhatsApp = pipelineType === 'whatsapp';
-  const nodes = isWhatsApp ? WHATSAPP_NODES : EMAIL_NODES;
+  const nodes = isMobile
+    ? (isWhatsApp ? WHATSAPP_NODES_MOBILE : EMAIL_NODES_MOBILE)
+    : (isWhatsApp ? WHATSAPP_NODES : EMAIL_NODES);
   const connections = isWhatsApp ? WHATSAPP_CONNECTIONS : EMAIL_CONNECTIONS;
   const accentColor = isWhatsApp ? '#25D366' : '#8b5cf6';
   const accentRgb = isWhatsApp ? '37,211,102' : '139,92,246';
@@ -88,7 +124,7 @@ function AgentFlowCanvas({ activeStep, completedSteps = [], errorStep, pipelineT
         )}
       </div>
       <svg
-        viewBox="0 0 700 240"
+        viewBox={isMobile ? "0 0 280 460" : "0 0 700 240"}
         className="flow-svg"
         xmlns="http://www.w3.org/2000/svg"
       >
