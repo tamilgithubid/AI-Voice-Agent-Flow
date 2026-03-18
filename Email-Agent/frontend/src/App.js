@@ -9,7 +9,7 @@ import { useVoice } from './hooks/useVoice';
 import { useSpeech } from './hooks/useSpeech';
 import { useConversationFlow } from './hooks/useConversationFlow';
 import { useIdleNudge } from './hooks/useIdleNudge';
-import { confirmEmail, confirmWhatsApp } from './services/api';
+import { confirmEmail, confirmWhatsApp, chatWithAI } from './services/api';
 import { getQuip } from './utils/personality';
 import './styles/App.css';
 
@@ -200,6 +200,63 @@ function App() {
       addMessage('assistant', result.confirmation);
       await speak(result.confirmation);
       await new Promise((r) => setTimeout(r, 250));
+    }
+
+    // Handle chat action — call AI backend
+    if (result.action === 'chat') {
+      setStatus('processing');
+      try {
+        const chatResponse = await chatWithAI(
+          result.chatInput || transcript,
+          flow.chatHistory,
+          sessionId
+        );
+
+        const { intent, response: aiResponse } = chatResponse.data;
+
+        // If LLM detected intent to send email/whatsapp, switch modes
+        if (intent === 'send_email') {
+          flow.addToChatHistory('assistant', aiResponse);
+          // Use processInput with keyword to properly set channelType
+          const switchResult = flow.processInput('email');
+          setPipelineType('email');
+          addMessage('assistant', aiResponse);
+          await speak(aiResponse);
+          await new Promise((r) => setTimeout(r, 200));
+          if (switchResult.prompt) {
+            await speakAndListen(switchResult.prompt);
+          }
+          setStatus('idle');
+          return;
+        }
+        if (intent === 'send_whatsapp') {
+          flow.addToChatHistory('assistant', aiResponse);
+          // Use processInput with keyword to properly set channelType
+          const switchResult = flow.processInput('whatsapp');
+          setPipelineType('whatsapp');
+          addMessage('assistant', aiResponse);
+          await speak(aiResponse);
+          await new Promise((r) => setTimeout(r, 200));
+          if (switchResult.prompt) {
+            await speakAndListen(switchResult.prompt);
+          }
+          setStatus('idle');
+          return;
+        }
+
+        // Regular chat response
+        flow.addToChatHistory('assistant', aiResponse);
+        await advanceStep('response');
+        setActiveStep(null);
+        setPipelineType('chat');
+        await speakAndListen(aiResponse);
+      } catch (err) {
+        const errorMsg = 'Sorry, I had trouble processing that. Could you try again?';
+        addMessage('assistant', errorMsg);
+        await speakAndListen(errorMsg);
+      }
+      setStatus('idle');
+      return;
     }
 
     // Handle send action

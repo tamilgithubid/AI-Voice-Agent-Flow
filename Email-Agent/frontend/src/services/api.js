@@ -30,3 +30,7 @@ export async function confirmWhatsApp(sessionId, confirmed, messageData) {
 export async function smartCompose({ body, subject, type }) {
   return request('/api/agent/smart-compose', { body, subject, type });
 }
+
+export async function chatWithAI(text, history, sessionId) {
+  return request('/api/agent/chat', { text, history, sessionId });
+}

@@ -326,6 +326,12 @@
   border: 1px solid rgba(37, 211, 102, 0.3);
 }
 
+.flow-badge.chat {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
 @keyframes badgeSlideIn {
   from { opacity: 0; transform: translateX(-8px) scale(0.8); }
   to { opacity: 1; transform: translateX(0) scale(1); }

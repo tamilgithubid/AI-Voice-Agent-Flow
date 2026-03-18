@@ -56,6 +56,25 @@ const WHATSAPP_NODES_MOBILE = [
   { id: 'response',  label: 'Voice Response',     icon: 'speaker',  color: '#06b6d4', x: 80,  y: 410 },
 ];
 
+// Chat mode: simplified pipeline (desktop)
+const CHAT_NODES = [
+  { id: 'voice',    label: 'Voice Input',      icon: 'mic',     color: '#3b82f6', x: 200, y: 80 },
+  { id: 'intent',   label: 'AI Brain',         icon: 'brain',   color: '#06b6d4', x: 350, y: 60 },
+  { id: 'response', label: 'Voice Response',   icon: 'speaker', color: '#06b6d4', x: 500, y: 80 },
+];
+
+// Chat mode: simplified pipeline (mobile)
+const CHAT_NODES_MOBILE = [
+  { id: 'voice',    label: 'Voice Input',      icon: 'mic',     color: '#3b82f6', x: 140, y: 60 },
+  { id: 'intent',   label: 'AI Brain',         icon: 'brain',   color: '#06b6d4', x: 140, y: 170 },
+  { id: 'response', label: 'Voice Response',   icon: 'speaker', color: '#06b6d4', x: 140, y: 280 },
+];
+
+const CHAT_CONNECTIONS = [
+  ['voice', 'intent'],
+  ['intent', 'response'],
+];
+
 const EMAIL_CONNECTIONS = [
   ['voice', 'intent'],
   ['intent', 'composer'],
@@ -76,16 +95,30 @@ const WHATSAPP_CONNECTIONS = [
 
 export const EMAIL_STEPS = ['voice', 'intent', 'composer', 'router', 'validator', 'gmail', 'response'];
 export const WHATSAPP_STEPS = ['voice', 'intent', 'composer', 'router', 'validator', 'whatsapp', 'response'];
+export const CHAT_STEPS = ['voice', 'intent', 'response'];
 
 function AgentFlowCanvas({ activeStep, completedSteps = [], errorStep, pipelineType }) {
   const isMobile = useIsMobile();
   const isWhatsApp = pipelineType === 'whatsapp';
-  const nodes = isMobile
-    ? (isWhatsApp ? WHATSAPP_NODES_MOBILE : EMAIL_NODES_MOBILE)
-    : (isWhatsApp ? WHATSAPP_NODES : EMAIL_NODES);
-  const connections = isWhatsApp ? WHATSAPP_CONNECTIONS : EMAIL_CONNECTIONS;
-  const accentColor = isWhatsApp ? '#25D366' : '#8b5cf6';
-  const accentRgb = isWhatsApp ? '37,211,102' : '139,92,246';
+  const isChat = pipelineType === 'chat';
+
+  let nodes, connections, accentColor, accentRgb;
+  if (isChat) {
+    nodes = isMobile ? CHAT_NODES_MOBILE : CHAT_NODES;
+    connections = CHAT_CONNECTIONS;
+    accentColor = '#06b6d4';
+    accentRgb = '6,182,212';
+  } else if (isWhatsApp) {
+    nodes = isMobile ? WHATSAPP_NODES_MOBILE : WHATSAPP_NODES;
+    connections = WHATSAPP_CONNECTIONS;
+    accentColor = '#25D366';
+    accentRgb = '37,211,102';
+  } else {
+    nodes = isMobile ? EMAIL_NODES_MOBILE : EMAIL_NODES;
+    connections = EMAIL_CONNECTIONS;
+    accentColor = '#8b5cf6';
+    accentRgb = '139,92,246';
+  }
 
   const nodeMap = useMemo(() => {
     const map = {};
@@ -113,18 +146,18 @@ function AgentFlowCanvas({ activeStep, completedSteps = [], errorStep, pipelineT
   const pipelineActive = activeStep || completedSteps.length > 0;
 
   return (
-    <div className={`agent-flow-canvas ${isWhatsApp ? 'whatsapp-mode' : 'email-mode'} ${pipelineActive ? 'pipeline-active' : ''}`}>
+    <div className={`agent-flow-canvas ${isChat ? 'chat-mode' : isWhatsApp ? 'whatsapp-mode' : 'email-mode'} ${pipelineActive ? 'pipeline-active' : ''}`}>
       <div className="flow-title">
-        <span className="flow-title-dot" style={isWhatsApp ? { background: '#25D366', boxShadow: '0 0 8px rgba(37,211,102,0.5)' } : {}} />
+        <span className="flow-title-dot" style={isChat ? { background: '#06b6d4', boxShadow: '0 0 8px rgba(6,182,212,0.5)' } : isWhatsApp ? { background: '#25D366', boxShadow: '0 0 8px rgba(37,211,102,0.5)' } : {}} />
         AI Agent Pipeline
         {pipelineType && (
           <span className={`flow-badge ${pipelineType}`}>
-            {isWhatsApp ? 'WhatsApp' : 'Email'}
+            {isChat ? 'AI Chat' : isWhatsApp ? 'WhatsApp' : 'Email'}
           </span>
         )}
       </div>
       <svg
-        viewBox={isMobile ? "0 0 280 460" : "0 0 700 240"}
+        viewBox={isMobile ? (isChat ? "0 0 280 340" : "0 0 280 460") : "0 0 700 240"}
         className="flow-svg"
         xmlns="http://www.w3.org/2000/svg"
       >

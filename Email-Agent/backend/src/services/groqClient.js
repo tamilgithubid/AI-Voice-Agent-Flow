@@ -166,4 +166,97 @@ async function smartCompose({ body, subject, type }) {
   }
 }
 
-module.exports = { processWithGroq, smartCompose };
+// --- AI Chat: Conversational assistant with intent detection ---
+const CHAT_SYSTEM_PROMPT = `You are Tamil AI Voice Agent — a smart, friendly AI assistant powered by Groq LLM.
+
+You can do TWO things:
+1. **Chat**: Answer questions, explain concepts, have conversations — like a knowledgeable AI assistant.
+2. **Send messages**: Help users send emails and WhatsApp messages.
+
+INTENT DETECTION — analyze the user's message and classify it:
+- "chat" → user is asking a question, having a conversation, or wants information
+- "send_email" → user wants to send an email (mentions "email", "mail", email address, or clearly wants to compose an email)
+- "send_whatsapp" → user wants to send a WhatsApp message (mentions "WhatsApp", "message", "text", phone number)
+
+RESPONSE RULES:
+- Keep responses concise (2-3 sentences max) — this is a VOICE assistant, responses are spoken aloud
+- Be natural and conversational, not robotic
+- If the user asks for more detail, you can give a longer response
+- Never use markdown, bullet points, or formatting — plain spoken text only
+- If intent is send_email or send_whatsapp, respond with a brief acknowledgment like "Sure, let's compose that email!" or "Got it, let's send a WhatsApp message!"
+
+Return STRICT JSON only (no markdown, no extra text):
+{
+  "intent": "chat" | "send_email" | "send_whatsapp",
+  "response": "Your spoken response to the user"
+}`;
+
+async function chatWithGroq({ userText, history = [] }) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey || apiKey === 'gsk_your_groq_api_key_here') {
+    throw new Error('GROQ_API_KEY is not configured in .env');
+  }
+
+  logger.info('Calling Groq Chat API');
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  // Build messages array with conversation history
+  const messages = [
+    { role: 'system', content: CHAT_SYSTEM_PROMPT },
+    ...history.slice(-20), // Keep last 20 messages for context
+    { role: 'user', content: userText },
+  ];
+
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages,
+        temperature: 0.7,
+        max_tokens: 512,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Groq API returned ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+
+    // Parse JSON response
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (e) {
+      const match = content.match(/\{[\s\S]*\}/);
+      if (match) {
+        parsed = JSON.parse(match[0]);
+      } else {
+        // If LLM didn't return JSON, treat it as a plain chat response
+        return {
+          intent: 'chat',
+          response: content.trim(),
+        };
+      }
+    }
+
+    return {
+      intent: parsed.intent || 'chat',
+      response: parsed.response || content.trim(),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+module.exports = { processWithGroq, smartCompose, chatWithGroq };

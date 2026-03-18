@@ -7,6 +7,7 @@ const STEPS = {
   IDLE: 'IDLE',
   GREETING: 'GREETING',
   AWAITING_TYPE: 'AWAITING_TYPE',
+  AI_CHAT: 'AI_CHAT',
   WA_RECIPIENT: 'WA_RECIPIENT',
   WA_MESSAGE: 'WA_MESSAGE',
   WA_CONFIRM: 'WA_CONFIRM',
@@ -18,6 +19,18 @@ const STEPS = {
   DONE: 'DONE',
   EDIT_CHOICE: 'EDIT_CHOICE',
 };
+
+// Fast-path keywords that skip LLM call
+function detectFastPathIntent(input) {
+  const lower = input.toLowerCase();
+  if (lower.includes('whatsapp') || lower.includes('what\'s app') || lower.includes('whats app')) {
+    return 'send_whatsapp';
+  }
+  if (lower.includes('email') || lower.includes('mail') || lower.includes('e-mail')) {
+    return 'send_email';
+  }
+  return null;
+}
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -75,6 +88,7 @@ export function useConversationFlow() {
   const [channelType, setChannelType] = useState(null);
   const [collected, setCollected] = useState({ to: '', subject: '', body: '' });
   const [retryCount, setRetryCount] = useState({});
+  const [chatHistory, setChatHistory] = useState([]);
 
   // Update collected data (for edits from UI)
   const updateCollected = useCallback((newData) => {
@@ -91,10 +105,24 @@ export function useConversationFlow() {
     setRetryCount({});
   }, []);
 
+  // Chat history management
+  const addToChatHistory = useCallback((role, content) => {
+    setChatHistory((prev) => {
+      const updated = [...prev, { role, content }];
+      return updated.slice(-20); // Keep last 20 messages
+    });
+  }, []);
+
+  const clearChatHistory = useCallback(() => {
+    setChatHistory([]);
+  }, []);
+
   const getPromptForStep = useCallback((currentStep) => {
     switch (currentStep) {
       case STEPS.GREETING:
-        return `${getGreeting()}! Welcome to Tamil Voice Assistant. How can I help you today?`;
+        return `${getGreeting()}! I'm Tamil AI Voice Agent. You can ask me anything, or say Email or WhatsApp to send a message.`;
+      case STEPS.AI_CHAT:
+        return null; // AI chat responses come from the LLM
       case STEPS.AWAITING_TYPE:
         return 'Would you like to send a message via WhatsApp or Email?';
       case STEPS.WA_RECIPIENT:
@@ -125,8 +153,9 @@ export function useConversationFlow() {
     setChannelType(null);
     setCollected({ to: '', subject: '', body: '' });
     resetRetries();
+    clearChatHistory();
     return getPromptForStep(STEPS.GREETING);
-  }, [getPromptForStep, resetRetries]);
+  }, [getPromptForStep, resetRetries, clearChatHistory]);
 
   const processInput = useCallback((transcript) => {
     const input = transcript.trim().toLowerCase();
@@ -252,11 +281,65 @@ export function useConversationFlow() {
 
     switch (step) {
       case STEPS.GREETING: {
-        setStep(STEPS.AWAITING_TYPE);
+        // Check for fast-path keywords (email/whatsapp) — skip LLM
+        const fastIntent = detectFastPathIntent(input);
+        if (fastIntent === 'send_whatsapp') {
+          setChannelType('whatsapp');
+          setStep(STEPS.WA_RECIPIENT);
+          return {
+            confirmation: getQuip('afterTypeWhatsApp'),
+            prompt: getPromptForStep(STEPS.WA_RECIPIENT),
+            pipelineStep: 'intent',
+          };
+        } else if (fastIntent === 'send_email') {
+          setChannelType('email');
+          setStep(STEPS.EM_RECIPIENT);
+          return {
+            confirmation: getQuip('afterTypeEmail'),
+            prompt: getPromptForStep(STEPS.EM_RECIPIENT),
+            pipelineStep: 'intent',
+          };
+        }
+        // No fast-path match — route to AI chat
+        addToChatHistory('user', transcript);
+        setStep(STEPS.AI_CHAT);
         return {
           confirmation: null,
-          prompt: getPromptForStep(STEPS.AWAITING_TYPE),
-          pipelineStep: 'voice',
+          prompt: null,
+          pipelineStep: 'intent',
+          action: 'chat',
+          chatInput: transcript,
+        };
+      }
+
+      case STEPS.AI_CHAT: {
+        // Check for fast-path keywords to switch to messaging mode
+        const fastIntent = detectFastPathIntent(input);
+        if (fastIntent === 'send_whatsapp') {
+          setChannelType('whatsapp');
+          setStep(STEPS.WA_RECIPIENT);
+          return {
+            confirmation: getQuip('afterTypeWhatsApp'),
+            prompt: getPromptForStep(STEPS.WA_RECIPIENT),
+            pipelineStep: 'intent',
+          };
+        } else if (fastIntent === 'send_email') {
+          setChannelType('email');
+          setStep(STEPS.EM_RECIPIENT);
+          return {
+            confirmation: getQuip('afterTypeEmail'),
+            prompt: getPromptForStep(STEPS.EM_RECIPIENT),
+            pipelineStep: 'intent',
+          };
+        }
+        // Stay in chat mode — send to LLM
+        addToChatHistory('user', transcript);
+        return {
+          confirmation: null,
+          prompt: null,
+          pipelineStep: 'intent',
+          action: 'chat',
+          chatInput: transcript,
         };
       }
 
@@ -278,18 +361,15 @@ export function useConversationFlow() {
             pipelineStep: 'intent',
           };
         } else {
-          const count = incrementRetry('AWAITING_TYPE');
-          if (count >= 3) {
-            return {
-              confirmation: 'Having trouble hearing you clearly.',
-              prompt: 'Just say the word "WhatsApp" or "Email" and I\'ll get it!',
-              pipelineStep: null,
-            };
-          }
+          // If not a clear email/whatsapp keyword, try AI chat
+          addToChatHistory('user', transcript);
+          setStep(STEPS.AI_CHAT);
           return {
             confirmation: null,
-            prompt: 'I didn\'t quite catch that. Would you like to send via WhatsApp or Email?',
-            pipelineStep: null,
+            prompt: null,
+            pipelineStep: 'intent',
+            action: 'chat',
+            chatInput: transcript,
           };
         }
       }
@@ -501,11 +581,44 @@ export function useConversationFlow() {
           const prompt = startFlow();
           return { confirmation: 'Great, let\'s go again!', prompt, pipelineStep: null };
         }
+        if (['no', 'nope', 'nothing', 'bye', 'goodbye', 'that\'s all', 'done'].some(w => input.includes(w))) {
+          return {
+            confirmation: getQuip('goodbye'),
+            prompt: null,
+            pipelineStep: null,
+            action: 'end',
+          };
+        }
+        // If user says something else at DONE, treat it as a new conversation
+        const fastIntent = detectFastPathIntent(input);
+        if (fastIntent === 'send_whatsapp') {
+          setChannelType('whatsapp');
+          setStep(STEPS.WA_RECIPIENT);
+          clearChatHistory();
+          return {
+            confirmation: getQuip('afterTypeWhatsApp'),
+            prompt: getPromptForStep(STEPS.WA_RECIPIENT),
+            pipelineStep: 'intent',
+          };
+        } else if (fastIntent === 'send_email') {
+          setChannelType('email');
+          setStep(STEPS.EM_RECIPIENT);
+          clearChatHistory();
+          return {
+            confirmation: getQuip('afterTypeEmail'),
+            prompt: getPromptForStep(STEPS.EM_RECIPIENT),
+            pipelineStep: 'intent',
+          };
+        }
+        // Route to AI chat
+        addToChatHistory('user', transcript);
+        setStep(STEPS.AI_CHAT);
         return {
-          confirmation: getQuip('goodbye'),
+          confirmation: null,
           prompt: null,
-          pipelineStep: null,
-          action: 'end',
+          pipelineStep: 'intent',
+          action: 'chat',
+          chatInput: transcript,
         };
       }
 
@@ -524,13 +637,16 @@ export function useConversationFlow() {
     setChannelType(null);
     setCollected({ to: '', subject: '', body: '' });
     resetRetries();
-  }, [resetRetries]);
+    clearChatHistory();
+  }, [resetRetries, clearChatHistory]);
 
   return {
     step,
     channelType,
     collected,
+    chatHistory,
     updateCollected,
+    addToChatHistory,
     startFlow,
     processInput,
     markDone,

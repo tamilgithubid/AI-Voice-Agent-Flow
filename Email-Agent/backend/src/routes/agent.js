@@ -2,7 +2,7 @@ const express = require('express');
 const Joi = require('joi');
 const logger = require('../utils/logger');
 const { sendToN8n } = require('../services/n8nClient');
-const { processWithGroq, smartCompose } = require('../services/groqClient');
+const { processWithGroq, smartCompose, chatWithGroq } = require('../services/groqClient');
 const { validateEmail, validatePhone } = require('../utils/validators');
 const { sendEmail } = require('../services/emailService');
 const { sendWhatsApp } = require('../services/whatsappService');
@@ -115,6 +115,40 @@ router.post('/confirm', async (req, res) => {
   } catch (err) {
     logger.error(`Confirm failed: ${err.message}`);
     res.status(502).json({ error: err.message || 'Failed to process confirmation. Please try again.' });
+  }
+});
+
+// POST /api/agent/chat - AI conversation with intent detection
+const chatSchema = Joi.object({
+  text: Joi.string().min(1).max(2000).required(),
+  history: Joi.array().items(
+    Joi.object({
+      role: Joi.string().valid('user', 'assistant').required(),
+      content: Joi.string().required(),
+    })
+  ).max(20).default([]),
+  sessionId: Joi.string().optional(),
+});
+
+router.post('/chat', async (req, res) => {
+  try {
+    const { error, value } = chatSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { text, history, sessionId } = value;
+    logger.info(`Chat message: "${text.substring(0, 50)}..."`, { sessionId });
+
+    const result = await chatWithGroq({ userText: text, history });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    logger.error(`Chat failed: ${err.message}`);
+    res.status(502).json({ error: 'Failed to process chat. Please try again.' });
   }
 });
 
