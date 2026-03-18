@@ -5,6 +5,7 @@ import EmailConfirmation from './components/EmailConfirmation';
 import StatusBar from './components/StatusBar';
 import TextInput from './components/TextInput';
 import AgentFlowCanvas from './components/AgentFlowCanvas';
+import CharacterSelect from './components/CharacterSelect';
 import { useVoice } from './hooks/useVoice';
 import { useSpeech } from './hooks/useSpeech';
 import { useConversationFlow } from './hooks/useConversationFlow';
@@ -15,6 +16,10 @@ import './styles/App.css';
 
 function App() {
   const [started, setStarted] = useState(false); // splash screen gate
+  const [characterSelected, setCharacterSelected] = useState(() => {
+    try { return localStorage.getItem('tamilAgent_characterSelected') === 'true'; }
+    catch { return false; }
+  });
   const [messages, setMessages] = useState(() => {
     try {
       const saved = sessionStorage.getItem('tamilAgentMessages');
@@ -30,8 +35,37 @@ function App() {
   const [errorStep, setErrorStep] = useState(null);
   const [pipelineType, setPipelineType] = useState(null);
 
-  const { speak, stop: stopSpeaking } = useSpeech();
-  const flow = useConversationFlow();
+  // Mode preferences (persisted in localStorage)
+  const [voiceGender, setVoiceGender] = useState(() => {
+    try { return localStorage.getItem('tamilAgent_voiceGender') || 'female'; }
+    catch { return 'female'; }
+  });
+  const [chatMode, setChatMode] = useState(() => {
+    try { return localStorage.getItem('tamilAgent_chatMode') || 'general'; }
+    catch { return 'general'; }
+  });
+
+  const handleVoiceChange = useCallback((gender) => {
+    setVoiceGender(gender);
+    localStorage.setItem('tamilAgent_voiceGender', gender);
+  }, []);
+
+  const handleModeChange = useCallback((mode) => {
+    setChatMode(mode);
+    localStorage.setItem('tamilAgent_chatMode', mode);
+  }, []);
+
+  const [selectedVoiceId, setSelectedVoiceId] = useState(() => {
+    try { return localStorage.getItem('tamilAgent_voiceId') || ''; }
+    catch { return ''; }
+  });
+  const [charName, setCharName] = useState(() => {
+    try { return localStorage.getItem('tamilAgent_charName') || 'Nova'; }
+    catch { return 'Nova'; }
+  });
+
+  const { speak, stop: stopSpeaking } = useSpeech(voiceGender, chatMode, selectedVoiceId);
+  const flow = useConversationFlow(chatMode, charName);
   const autoListenRef = useRef(false);
   const flowStartedRef = useRef(false);
   const [listenTrigger, setListenTrigger] = useState(0); // triggers auto-listen effect
@@ -204,12 +238,21 @@ function App() {
 
     // Handle chat action — call AI backend
     if (result.action === 'chat') {
+      // Auto-mode detection from romantic keywords
+      let activeChatMode = chatMode;
+      if (result.modeSwitch === 'romantic' && chatMode === 'general') {
+        const autoMode = voiceGender === 'male' ? 'girlfriend' : 'boyfriend';
+        handleModeChange(autoMode);
+        activeChatMode = autoMode;
+      }
+
       setStatus('processing');
       try {
         const chatResponse = await chatWithAI(
           result.chatInput || transcript,
           flow.chatHistory,
-          sessionId
+          sessionId,
+          activeChatMode
         );
 
         const { intent, response: aiResponse } = chatResponse.data;
@@ -395,8 +438,45 @@ function App() {
   // Show confirm card at confirm/edit steps
   const showConfirmCard = ['WA_CONFIRM', 'EM_CONFIRM', 'EDIT_CHOICE'].includes(flow.step);
 
+  // Character select handler
+  const handleCharacterSelect = useCallback(async (mode, gender, voiceId, name) => {
+    // Update all state synchronously
+    handleModeChange(mode);
+    handleVoiceChange(gender);
+    setSelectedVoiceId(voiceId || '');
+    localStorage.setItem('tamilAgent_voiceId', voiceId || '');
+    setCharName(name || 'Nova');
+    localStorage.setItem('tamilAgent_charName', name || 'Nova');
+    setCharacterSelected(true);
+    localStorage.setItem('tamilAgent_characterSelected', 'true');
+
+    // Unlock speech synthesis
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.resume();
+    const warmup = new SpeechSynthesisUtterance('');
+    warmup.volume = 0;
+    window.speechSynthesis.speak(warmup);
+
+    // Wait for state to propagate to useSpeech hook
+    await new Promise((r) => setTimeout(r, 600));
+    flowStartedRef.current = true;
+    const greeting = flow.startFlow();
+    resetPipeline();
+    await speakAndListen(greeting);
+  }, [flow, resetPipeline, speakAndListen, handleModeChange, handleVoiceChange]);
+
+  // Reopen character select
+  const handleReopenCharacterSelect = useCallback(() => {
+    setCharacterSelected(false);
+    localStorage.setItem('tamilAgent_characterSelected', 'false');
+    flow.reset();
+    flowStartedRef.current = false;
+  }, [flow]);
+
+  // charName is dynamic based on gender + mode selection
+
   return (
-    <div className="app">
+    <div className={`app theme-${chatMode}`}>
       {/* Cinematic background layers */}
       <div className="shooting-star-layer" />
       <div className="nebula-layer" />
@@ -425,7 +505,18 @@ function App() {
 
       <header className="app-header">
         <h1> Tamil AI Voice Agent</h1>
-        <p>Powered by Groq LLM &bull; Voice &bull; Email &bull; WhatsApp</p>
+        <p>
+          Powered by Groq LLM &bull; Voice &bull; Email &bull; WhatsApp
+          {characterSelected && (
+            <span
+              className="header-mode-badge"
+              onClick={handleReopenCharacterSelect}
+              title="Change character"
+            >
+              {charName}
+            </span>
+          )}
+        </p>
       </header>
 
       {/* Splash overlay — one click to unlock voice */}
@@ -443,7 +534,16 @@ function App() {
         </div>
       )}
 
-      <main className="app-main">
+      {/* Character Selection Screen — after splash, before conversation */}
+      {started && !characterSelected && (
+        <CharacterSelect
+          onSelect={handleCharacterSelect}
+          initialMode={chatMode}
+          initialGender={voiceGender}
+        />
+      )}
+
+      <main className={`app-main mode-${chatMode}`}>
         {permissionState === 'denied' && (
           <div className="permission-banner">
             Microphone access is blocked. Please enable it in browser settings to use voice.
@@ -457,7 +557,7 @@ function App() {
           errorStep={errorStep}
         />
 
-        <ChatWindow messages={messages} />
+        <ChatWindow messages={messages} chatMode={chatMode} voiceGender={voiceGender} />
 
         {showConfirmCard && flow.collected.to && (
           <EmailConfirmation
@@ -481,6 +581,8 @@ function App() {
             isListening={isListening}
             actionType={flow.channelType}
             passiveMode={passiveMode}
+            chatMode={chatMode}
+            charName={charName}
           />
           <TextInput
             onSubmit={handleInput}

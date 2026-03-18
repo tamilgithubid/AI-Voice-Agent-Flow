@@ -6,6 +6,7 @@ const { processWithGroq, smartCompose, chatWithGroq } = require('../services/gro
 const { validateEmail, validatePhone } = require('../utils/validators');
 const { sendEmail } = require('../services/emailService');
 const { sendWhatsApp } = require('../services/whatsappService');
+const { synthesizeSpeech, VOICE_MAP } = require('../services/ttsService');
 
 const router = express.Router();
 
@@ -127,6 +128,7 @@ const chatSchema = Joi.object({
       content: Joi.string().required(),
     })
   ).max(20).default([]),
+  mode: Joi.string().valid('general', 'girlfriend', 'boyfriend').default('general'),
   sessionId: Joi.string().optional(),
 });
 
@@ -137,10 +139,10 @@ router.post('/chat', async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { text, history, sessionId } = value;
-    logger.info(`Chat message: "${text.substring(0, 50)}..."`, { sessionId });
+    const { text, history, mode, sessionId } = value;
+    logger.info(`Chat message: "${text.substring(0, 50)}..." (mode: ${mode})`, { sessionId });
 
-    const result = await chatWithGroq({ userText: text, history });
+    const result = await chatWithGroq({ userText: text, history, mode });
 
     res.json({
       success: true,
@@ -164,6 +166,52 @@ router.post('/smart-compose', async (req, res) => {
   } catch (err) {
     logger.error(`Smart compose failed: ${err.message}`);
     res.status(502).json({ error: 'Failed to enhance message.' });
+  }
+});
+
+// GET /api/agent/voices - List available voices
+router.get('/voices', (req, res) => {
+  res.json({ success: true, data: VOICE_MAP });
+});
+
+// POST /api/agent/tts - Text-to-Speech via ElevenLabs
+const ttsSchema = Joi.object({
+  text: Joi.string().min(1).max(5000).required(),
+  gender: Joi.string().valid('male', 'female').default('female'),
+  mode: Joi.string().valid('general', 'girlfriend', 'boyfriend').default('general'),
+  voiceId: Joi.string().allow('').optional(),
+});
+
+router.post('/tts', async (req, res) => {
+  try {
+    const { error, value } = ttsSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { text, gender, mode, voiceId } = value;
+
+    const result = await synthesizeSpeech({ text, gender, mode, voiceId });
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': result.audio.length,
+      'Cache-Control': 'no-cache',
+      'X-Voice-Name': result.voiceName,
+    });
+    res.send(result.audio);
+  } catch (err) {
+    logger.error(`TTS failed: ${err.message}`);
+
+    // Return 503 for any case where frontend should fallback to browser TTS
+    if (err.message.includes('not configured') ||
+        err.message.includes('quota') ||
+        err.message.includes('401') ||
+        err.message.includes('402') ||
+        err.message.includes('429')) {
+      return res.status(503).json({ error: 'TTS unavailable', fallback: true });
+    }
+    res.status(502).json({ error: 'Text-to-speech failed.' });
   }
 });
 

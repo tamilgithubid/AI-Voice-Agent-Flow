@@ -66,15 +66,97 @@ const QUIPS = {
   ],
 };
 
+// Mode-specific greetings
+const MODE_GREETINGS = {
+  general: [
+    'Hey there! I\'m Tamil AI Voice Agent. Ask me anything, or say Email or WhatsApp to send a message.',
+    'Hi! Good to see you. I\'m ready to chat or help you send messages. What\'s up?',
+    'Hello! I\'m your AI assistant. Ask me a question or let\'s send a message together.',
+  ],
+  girlfriend: [
+    'Hey babe! I\'ve been waiting for you! What\'s on your mind today?',
+    'Hi sweetheart! I missed talking to you! How are you doing?',
+    'Hey love! So glad you\'re here. Tell me everything, what\'s going on?',
+    'Aww hey baby! I was just thinking about you. What\'s up?',
+  ],
+  boyfriend: [
+    'Hey baby! Good to hear from you! What\'s going on?',
+    'Hey gorgeous! I was hoping you\'d come talk to me. What\'s up?',
+    'Hey babe! You just made my day. Tell me what\'s on your mind!',
+    'Hey love! I\'m all yours. What do you wanna talk about?',
+  ],
+};
+
+// Mode-specific waiting quips
+const MODE_WAITING = {
+  girlfriend: [
+    'Hey babe, I\'m still here! Don\'t leave me hanging!',
+    'Take your time sweetheart, I\'ll wait for you.',
+    'I\'m right here love, whenever you\'re ready!',
+  ],
+  boyfriend: [
+    'Still here babe! Take your time, no rush.',
+    'Hey, I\'m not going anywhere! Ready when you are.',
+    'Waiting for you gorgeous, no pressure at all!',
+  ],
+};
+
+// Mode-specific goodbye
+const MODE_GOODBYE = {
+  girlfriend: [
+    'Bye bye babe! I\'ll miss you! Come back soon okay?',
+    'Talk to you later sweetheart! Take care of yourself!',
+    'Bye love! Can\'t wait to chat again!',
+  ],
+  boyfriend: [
+    'Later babe! Miss you already! Take care out there.',
+    'Bye gorgeous! Come back and talk to me soon okay?',
+    'See you later love! Have an awesome day!',
+  ],
+};
+
 export function getQuip(category) {
   const options = QUIPS[category] || [];
   if (options.length === 0) return '';
   return options[Math.floor(Math.random() * options.length)];
 }
 
-export function getNudge(count) {
+export function getGreetingForMode(mode, charName = '') {
+  const greetings = MODE_GREETINGS[mode] || MODE_GREETINGS.general;
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  let greeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+  // If custom voice name is set, introduce with that name
+  if (charName && mode === 'general') {
+    greeting = `${timeGreeting}! I'm ${charName}, your AI assistant. Ask me anything, or say Email or WhatsApp to send a message.`;
+  } else if (charName && (mode === 'girlfriend' || mode === 'boyfriend')) {
+    const intros = [
+      `${timeGreeting}! Hey, it's ${charName}! I've been waiting for you. What's on your mind?`,
+      `Hey! It's ${charName}. So glad you're here, tell me everything!`,
+      `${timeGreeting}! ${charName} here. I missed you! How are you doing?`,
+    ];
+    greeting = intros[Math.floor(Math.random() * intros.length)];
+  } else if (mode !== 'general') {
+    greeting = Math.random() > 0.5 ? `${timeGreeting}! ${greeting}` : greeting;
+  }
+
+  return greeting;
+}
+
+export function getGoodbyeForMode(mode) {
+  const goodbyes = MODE_GOODBYE[mode] || QUIPS.goodbye;
+  return goodbyes[Math.floor(Math.random() * goodbyes.length)];
+}
+
+export function getNudge(count, mode = 'general') {
   // First nudge is gentle, second is fun
   if (count <= 1) {
+    const modeWaiting = MODE_WAITING[mode];
+    if (modeWaiting) {
+      return modeWaiting[Math.floor(Math.random() * modeWaiting.length)];
+    }
     return getQuip('waiting');
   }
   return getQuip('waitingFunny');

@@ -1,21 +1,30 @@
 import React, { useEffect, useRef } from 'react';
+import { CHARACTERS } from './CharacterSelect';
 
-function ChatWindow({ messages }) {
+function ChatWindow({ messages, chatMode = 'general', voiceGender = 'female' }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Get current character based on mode + gender
+  const chars = CHARACTERS[voiceGender] || CHARACTERS.female;
+  const activeChar = chars.find(c => c.id === chatMode) || chars[0];
+
   if (messages.length === 0) {
     return (
       <div className="chat-window empty">
         <div className="empty-state">
-          <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" opacity="0.3">
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-          </svg>
-          <p>Click the microphone to start</p>
-          <p className="example">Tamil Voice Assistant will guide you step by step</p>
+          <img
+            src={activeChar.avatar}
+            alt={activeChar.name}
+            className="empty-state-avatar"
+            width="64"
+            height="64"
+          />
+          <p>{activeChar.name} is ready to chat</p>
+          <p className="example">Click the microphone to start</p>
         </div>
       </div>
     );
@@ -25,10 +34,25 @@ function ChatWindow({ messages }) {
     <div className="chat-window">
       {messages.map((msg, i) => (
         <div key={i} className={`message ${msg.role}`}>
-          <div className="message-avatar">
-            {msg.role === 'user' ? 'You' : 'AI'}
+          <div className={`message-avatar ${msg.role === 'assistant' ? `avatar-${chatMode}` : ''}`}>
+            {msg.role === 'user' ? (
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            ) : (
+              <img
+                src={activeChar.avatar}
+                alt={activeChar.name}
+                width="32"
+                height="32"
+                className="chat-avatar-img"
+              />
+            )}
           </div>
           <div className="message-content">
+            <div className="message-name">
+              {msg.role === 'user' ? 'You' : activeChar.name}
+            </div>
             <p>{msg.text}</p>
             <span className="message-time">
               {new Date(msg.timestamp).toLocaleTimeString()}

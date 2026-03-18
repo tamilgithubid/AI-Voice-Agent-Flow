@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { getQuip } from '../utils/personality';
+import { getQuip, getGreetingForMode, getGoodbyeForMode } from '../utils/personality';
 import { findContact, saveContact } from '../utils/contacts';
 import { findTemplate, getTemplateNames } from '../utils/templates';
 
@@ -32,11 +32,16 @@ function detectFastPathIntent(input) {
   return null;
 }
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+// Auto-detect romantic keywords for mode switching
+const ROMANTIC_KEYWORDS = ['babe', 'baby', 'sweetheart', 'honey', 'darling', 'cutie', 'love you', 'miss you', 'i love', 'my love', 'beautiful', 'handsome'];
+
+function detectModeFromKeywords(input, currentMode) {
+  if (currentMode !== 'general') return null; // only auto-switch from general
+  const lower = input.toLowerCase();
+  if (ROMANTIC_KEYWORDS.some(kw => lower.includes(kw))) {
+    return 'romantic'; // signal to App.js to ask user about switching
+  }
+  return null;
 }
 
 // Validate email format
@@ -83,7 +88,7 @@ function cleanPhoneFromSpeech(transcript) {
   return phone;
 }
 
-export function useConversationFlow() {
+export function useConversationFlow(chatMode = 'general', charName = '') {
   const [step, setStep] = useState(STEPS.IDLE);
   const [channelType, setChannelType] = useState(null);
   const [collected, setCollected] = useState({ to: '', subject: '', body: '' });
@@ -120,7 +125,7 @@ export function useConversationFlow() {
   const getPromptForStep = useCallback((currentStep) => {
     switch (currentStep) {
       case STEPS.GREETING:
-        return `${getGreeting()}! I'm Tamil AI Voice Agent. You can ask me anything, or say Email or WhatsApp to send a message.`;
+        return getGreetingForMode(chatMode, charName);
       case STEPS.AI_CHAT:
         return null; // AI chat responses come from the LLM
       case STEPS.AWAITING_TYPE:
@@ -301,6 +306,7 @@ export function useConversationFlow() {
           };
         }
         // No fast-path match — route to AI chat
+        const modeHint = detectModeFromKeywords(input, chatMode);
         addToChatHistory('user', transcript);
         setStep(STEPS.AI_CHAT);
         return {
@@ -309,6 +315,7 @@ export function useConversationFlow() {
           pipelineStep: 'intent',
           action: 'chat',
           chatInput: transcript,
+          modeSwitch: modeHint,
         };
       }
 
@@ -332,11 +339,14 @@ export function useConversationFlow() {
             pipelineStep: 'intent',
           };
         }
+        // Check for romantic keywords — auto-switch mode
+        const chatModeHint = detectModeFromKeywords(input, chatMode);
         // Stay in chat mode — send to LLM
         addToChatHistory('user', transcript);
         return {
           confirmation: null,
           prompt: null,
+          modeSwitch: chatModeHint,
           pipelineStep: 'intent',
           action: 'chat',
           chatInput: transcript,
@@ -583,7 +593,7 @@ export function useConversationFlow() {
         }
         if (['no', 'nope', 'nothing', 'bye', 'goodbye', 'that\'s all', 'done'].some(w => input.includes(w))) {
           return {
-            confirmation: getQuip('goodbye'),
+            confirmation: getGoodbyeForMode(chatMode),
             prompt: null,
             pipelineStep: null,
             action: 'end',

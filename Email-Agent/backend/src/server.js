@@ -20,12 +20,13 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
+  exposedHeaders: ['X-Voice-Name'],
 }));
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 30,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 60,
   message: { error: 'Too many requests, please try again later.' },
 });
 app.use('/api/', limiter);
