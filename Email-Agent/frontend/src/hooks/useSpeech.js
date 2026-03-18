@@ -56,24 +56,50 @@ export function useSpeech() {
   }, []);
 
   const speak = useCallback((text) => {
-    if (!window.speechSynthesis) return;
+    if (!window.speechSynthesis) return Promise.resolve();
 
-    // Cancel any ongoing speech
+    // Cancel any ongoing speech first
     window.speechSynthesis.cancel();
 
-    return new Promise((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
+    // Chrome pauses synthesis after ~15s of inactivity — resume it
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
 
-      // Use the best available voice
-      if (bestVoiceRef.current) {
-        utterance.voice = bestVoiceRef.current;
+    return new Promise((resolve) => {
+      // Helper to create a configured utterance
+      const makeUtterance = (t) => {
+        const u = new SpeechSynthesisUtterance(t);
+        if (bestVoiceRef.current) u.voice = bestVoiceRef.current;
+        u.rate = 0.95;
+        u.pitch = 1.0;
+        u.volume = 1.0;
+        u.lang = 'en-US';
+        return u;
+      };
+
+      // Chrome bug workaround: split long text into sentences
+      if (text.length > 200) {
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+        let chain = Promise.resolve();
+        sentences.forEach((sentence) => {
+          chain = chain.then(() => {
+            return new Promise((res) => {
+              const chunk = makeUtterance(sentence.trim());
+              chunk.onend = res;
+              chunk.onerror = res;
+              window.speechSynthesis.speak(chunk);
+            });
+          });
+        });
+        chain.then(() => {
+          isSpeakingRef.current = false;
+          resolve();
+        });
+        return;
       }
 
-      // Natural speech settings
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      utterance.lang = 'en-US';
+      const utterance = makeUtterance(text);
 
       utterance.onstart = () => {
         isSpeakingRef.current = true;
@@ -89,30 +115,7 @@ export function useSpeech() {
         resolve();
       };
 
-      // Chrome bug workaround: speech can stop mid-sentence on long text
-      // Split into chunks if text is long
-      if (text.length > 200) {
-        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-        let chain = Promise.resolve();
-        sentences.forEach((sentence) => {
-          chain = chain.then(() => {
-            return new Promise((res) => {
-              const chunk = new SpeechSynthesisUtterance(sentence.trim());
-              if (bestVoiceRef.current) chunk.voice = bestVoiceRef.current;
-              chunk.rate = 0.95;
-              chunk.pitch = 1.0;
-              chunk.volume = 1.0;
-              chunk.lang = 'en-US';
-              chunk.onend = res;
-              chunk.onerror = res;
-              window.speechSynthesis.speak(chunk);
-            });
-          });
-        });
-        chain.then(resolve);
-      } else {
-        window.speechSynthesis.speak(utterance);
-      }
+      window.speechSynthesis.speak(utterance);
     });
   }, []);
 

@@ -20,5 +20,13 @@ export async function sendMessage(text, sessionId) {
 }
 
 export async function confirmEmail(sessionId, confirmed, emailData) {
-  return request('/api/agent/confirm', { sessionId, confirmed, emailData });
+  return request('/api/agent/confirm', { sessionId, confirmed, type: 'email', emailData });
+}
+
+export async function confirmWhatsApp(sessionId, confirmed, messageData) {
+  return request('/api/agent/confirm', { sessionId, confirmed, type: 'whatsapp', emailData: messageData });
+}
+
+export async function smartCompose({ body, subject, type }) {
+  return request('/api/agent/smart-compose', { body, subject, type });
 }

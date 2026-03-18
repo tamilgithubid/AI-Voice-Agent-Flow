@@ -7,6 +7,55 @@
   flex-direction: column;
 }
 
+/* ========================================
+   SPLASH OVERLAY - Click to Start
+   ======================================== */
+
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10, 10, 20, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: fadeIn 0.5s ease;
+}
+
+.splash-content {
+  text-align: center;
+  animation: splashPulse 2s ease-in-out infinite;
+}
+
+.splash-mic-icon {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+  border: 2px solid #667eea44;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.splash-content h2 {
+  font-size: 28px;
+  color: #667eea;
+  margin-bottom: 8px;
+}
+
+.splash-content p {
+  font-size: 14px;
+  color: #888;
+}
+
+@keyframes splashPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
 /* Header */
 .app-header {
   text-align: center;
@@ -57,6 +106,16 @@
   padding: 14px 10px 10px;
   position: relative;
   overflow: hidden;
+  transition: border-color 0.5s ease;
+}
+
+/* WhatsApp mode border accent */
+.agent-flow-canvas.whatsapp-mode {
+  border-color: #25D36644;
+}
+
+.agent-flow-canvas.email-mode {
+  border-color: #667eea44;
 }
 
 /* Subtle grid background like n8n */
@@ -83,6 +142,11 @@
   padding: 0 6px 8px;
   position: relative;
   z-index: 1;
+  transition: color 0.4s ease;
+}
+
+.whatsapp-mode .flow-title {
+  color: #25D366;
 }
 
 .flow-title-dot {
@@ -91,6 +155,39 @@
   border-radius: 50%;
   background: #667eea;
   animation: flowTitlePulse 2s infinite;
+  transition: background 0.4s ease;
+}
+
+/* Pipeline type badge */
+.flow-badge {
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.8px;
+  animation: badgeSlideIn 0.4s ease;
+}
+
+.flow-badge.email {
+  background: #667eea22;
+  color: #667eea;
+  border: 1px solid #667eea44;
+}
+
+.flow-badge.whatsapp {
+  background: #25D36622;
+  color: #25D366;
+  border: 1px solid #25D36644;
+}
+
+@keyframes badgeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .flow-svg {
@@ -167,6 +264,20 @@
 
 @keyframes dashFlow {
   to { stroke-dashoffset: -20; }
+}
+
+/* WhatsApp node active pulse */
+.whatsapp-mode .agent-node.active .node-bg {
+  animation: nodeActivePulseGreen 1.5s infinite;
+}
+
+@keyframes nodeActivePulseGreen {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(37, 211, 102, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(37, 211, 102, 0.6));
+  }
 }
 
 /* ========================================
@@ -265,7 +376,7 @@
 }
 
 /* ========================================
-   EMAIL CONFIRMATION
+   EMAIL / WHATSAPP CONFIRMATION
    ======================================== */
 
 .email-confirmation {
@@ -273,12 +384,24 @@
   border: 1px solid #667eea44;
   border-radius: 12px;
   padding: 20px;
+  animation: fadeIn 0.3s ease;
+  transition: border-color 0.3s ease;
+}
+
+/* WhatsApp confirmation theme */
+.email-confirmation.whatsapp {
+  border-color: #25D36644;
 }
 
 .email-confirmation h3 {
   color: #667eea;
   margin-bottom: 14px;
   font-size: 16px;
+  transition: color 0.3s ease;
+}
+
+.email-confirmation.whatsapp h3 {
+  color: #25D366;
 }
 
 .email-field {
@@ -315,6 +438,11 @@
 .email-field textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.email-confirmation.whatsapp .email-field input:focus,
+.email-confirmation.whatsapp .email-field textarea:focus {
+  border-color: #25D366;
 }
 
 .email-body {
@@ -362,6 +490,30 @@
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
+/* WhatsApp Send button */
+.btn-whatsapp-send {
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: white;
+  flex: 1;
+}
+
+.btn-whatsapp-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+/* WhatsApp Open button */
+.btn-whatsapp-open {
+  background: #1a2e1a;
+  color: #25D366;
+  border: 1px solid #25D36633;
+}
+
+.btn-whatsapp-open:hover:not(:disabled) {
+  background: #1a3e1a;
+  border-color: #25D36666;
+}
+
 .btn-cancel {
   background: #2a2a3e;
   color: #ccc;
@@ -389,6 +541,60 @@
 .btn-local:hover:not(:disabled) {
   background: #1a4a3e;
   border-color: #4ade8066;
+}
+
+/* ========================================
+   TEXT INPUT FALLBACK
+   ======================================== */
+
+.text-input-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.text-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: #16213e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.text-input:disabled {
+  opacity: 0.4;
+}
+
+.btn-text-send {
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-text-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-text-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ========================================
@@ -464,6 +670,12 @@
   color: #f39c12;
 }
 
+.status-bar.passive {
+  color: #4ade80;
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -506,6 +718,102 @@
 .chat-window::-webkit-scrollbar-thumb {
   background: #333;
   border-radius: 3px;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+/* ========================================
+   VOICE BUTTON WAVE ANIMATION
+   ======================================== */
+
+.voice-button-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-waves {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.wave {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(231, 76, 60, 0.4);
+  animation: waveExpand 2s ease-out infinite;
+}
+
+.wave-1 {
+  width: 90px;
+  height: 90px;
+  animation-delay: 0s;
+}
+
+.wave-2 {
+  width: 110px;
+  height: 110px;
+  animation-delay: 0.5s;
+}
+
+.wave-3 {
+  width: 130px;
+  height: 130px;
+  animation-delay: 1s;
+}
+
+@keyframes waveExpand {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* ========================================
+   SMART COMPOSE / ENHANCE BUTTON
+   ======================================== */
+
+.btn-smart-compose {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-smart-compose:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+}
+
+.btn-smart-compose:disabled {
+  opacity: 0.6;
+}
+
+.enhance-info {
+  background: #1a2a3e;
+  border: 1px solid #667eea44;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #a5b4fc;
+  animation: fadeIn 0.3s ease;
+  margin-top: 8px;
+}
+
+.email-confirmation.whatsapp .enhance-info {
+  border-color: #25D36644;
+  color: #86efac;
 }
 
 /* ========================================

@@ -46,7 +46,7 @@ app.use((err, req, res, next) => {
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    logger.info(`Voice Email Agent backend running on port ${PORT}`);
+    logger.info(`Tamil AI Voice Agent backend running on port ${PORT}`);
   });
 }
 

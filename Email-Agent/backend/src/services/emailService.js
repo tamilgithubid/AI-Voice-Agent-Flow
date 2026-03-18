@@ -28,7 +28,7 @@ async function sendEmail({ to, subject, body }) {
   logger.info(`Sending email from ${from} to ${to} | Subject: ${subject}`);
 
   const info = await transport.sendMail({
-    from: `"Voice Email Agent" <${from}>`,
+    from: `"Tamil AI Voice Agent" <${from}>`,
     to,
     subject,
     text: body,

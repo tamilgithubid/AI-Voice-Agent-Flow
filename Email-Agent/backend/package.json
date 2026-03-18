@@ -17,6 +17,7 @@
     "joi": "^17.13.0",
     "morgan": "^1.10.0",
     "nodemailer": "^8.0.2",
+    "twilio": "^5.13.0",
     "winston": "^3.14.0"
   },
   "devDependencies": {
