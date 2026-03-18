@@ -340,9 +340,35 @@ function App() {
 
   return (
     <div className="app">
+      {/* Cinematic background layers */}
+      <div className="shooting-star-layer" />
+      <div className="nebula-layer" />
+
+      {/* HUD corner readouts */}
+      <div className="hud-corner hud-top-left">
+        <div className="hud-label">SYNAPTIC LOAD: 88% [ACTIVE]</div>
+        <div className="hud-waveform">
+          <svg viewBox="0 0 120 30" preserveAspectRatio="none">
+            <polyline points="0,15 8,10 16,18 24,8 32,20 40,12 48,22 56,6 64,18 72,14 80,20 88,10 96,16 104,8 112,18 120,15" fill="none" stroke="rgba(139,92,246,0.5)" strokeWidth="1.5">
+              <animate attributeName="points" values="0,15 8,10 16,18 24,8 32,20 40,12 48,22 56,6 64,18 72,14 80,20 88,10 96,16 104,8 112,18 120,15;0,15 8,18 16,8 24,20 32,10 40,22 48,12 56,18 64,6 72,20 80,10 88,18 96,8 104,16 112,12 120,15;0,15 8,10 16,18 24,8 32,20 40,12 48,22 56,6 64,18 72,14 80,20 88,10 96,16 104,8 112,18 120,15" dur="3s" repeatCount="indefinite" />
+            </polyline>
+          </svg>
+        </div>
+      </div>
+      <div className="hud-corner hud-top-right">
+        <div className="hud-label">CORE FREQUENCY: 3.2 GHz [STABLE]</div>
+        <div className="hud-waveform">
+          <svg viewBox="0 0 120 30" preserveAspectRatio="none">
+            <polyline points="0,15 10,15 12,5 14,25 16,15 30,15 32,8 34,22 36,15 50,15 52,3 54,27 56,15 70,15 72,10 74,20 76,15 90,15 92,6 94,24 96,15 110,15 112,8 114,22 116,15 120,15" fill="none" stroke="rgba(6,182,212,0.5)" strokeWidth="1.5">
+              <animate attributeName="points" values="0,15 10,15 12,5 14,25 16,15 30,15 32,8 34,22 36,15 50,15 52,3 54,27 56,15 70,15 72,10 74,20 76,15 90,15 92,6 94,24 96,15 110,15 112,8 114,22 116,15 120,15;0,15 10,15 12,8 14,22 16,15 30,15 32,3 34,27 36,15 50,15 52,6 54,24 56,15 70,15 72,5 74,25 76,15 90,15 92,10 94,20 96,15 110,15 112,4 114,26 116,15 120,15;0,15 10,15 12,5 14,25 16,15 30,15 32,8 34,22 36,15 50,15 52,3 54,27 56,15 70,15 72,10 74,20 76,15 90,15 92,6 94,24 96,15 110,15 112,8 114,22 116,15 120,15" dur="2s" repeatCount="indefinite" />
+            </polyline>
+          </svg>
+        </div>
+      </div>
+
       <header className="app-header">
-        <h1>Tamil AI Voice Agent</h1>
-        <p>Your AI-Powered Voice Assistant — Email & WhatsApp</p>
+        <h1> Tamil AI Voice Agent</h1>
+        <p>Powered by Groq LLM &bull; Voice &bull; Email &bull; WhatsApp</p>
       </header>
 
       {/* Splash overlay — one click to unlock voice */}
@@ -402,7 +428,7 @@ function App() {
           <TextInput
             onSubmit={handleInput}
             disabled={status === 'processing' || status === 'sending'}
-            placeholder={flow.step === 'IDLE' ? 'Click mic to start...' : 'Or type your response here...'}
+            placeholder={flow.step === 'IDLE' ? 'Enter your command...' : 'Enter your command...'}
           />
         </div>
       </main>

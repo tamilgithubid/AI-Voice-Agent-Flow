@@ -43,108 +43,171 @@ const ICONS = {
   ),
 };
 
-function AgentNode({ id, label, sublabel, icon, status, x, y, color }) {
+function AgentNode({ id, label, icon, status, x, y, color, accentColor, accentRgb }) {
   const isActive = status === 'active';
   const isDone = status === 'done';
   const isError = status === 'error';
 
-  const nodeColor = isError ? '#e74c3c' : (color || '#667eea');
-  const glowColor = isActive ? nodeColor : 'transparent';
+  const nodeColor = isError ? '#e74c3c' : (color || '#8b5cf6');
+  const isLit = isActive || isDone;
+
+  // Parse node color to RGB for rgba usage
+  const hexToRgb = (hex) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r},${g},${b}`;
+  };
+  const nodeRgb = hexToRgb(nodeColor);
 
   return (
     <g
       className={`agent-node ${status}`}
       transform={`translate(${x}, ${y})`}
     >
-      {/* Glow effect */}
-      {isActive && (
-        <rect
-          x="-70"
-          y="-30"
-          width="140"
-          height="60"
-          rx="12"
-          fill="none"
-          stroke={glowColor}
-          strokeWidth="2"
-          opacity="0.6"
-          className="node-glow"
-        />
-      )}
-
-      {/* Node background */}
-      <rect
-        x="-65"
-        y="-26"
-        width="130"
-        height="52"
-        rx="10"
-        fill={isDone || isActive ? `${nodeColor}22` : '#1e1e3a'}
-        stroke={isDone ? nodeColor : isActive ? nodeColor : '#2a2a4a'}
-        strokeWidth={isActive ? 2 : 1}
-        className="node-bg"
-      />
-
-      {/* Icon circle */}
-      <circle
-        cx="-35"
-        cy="0"
-        r="15"
-        fill={isDone || isActive ? `${nodeColor}33` : '#16213e'}
-        stroke={isDone || isActive ? nodeColor : '#333'}
-        strokeWidth="1.5"
-      />
-
-      {/* Icon */}
-      <svg
-        x="-44"
-        y="-9"
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill={isDone || isActive ? nodeColor : '#666'}
-      >
-        {ICONS[icon]}
-      </svg>
-
-      {/* Label */}
+      {/* Label ABOVE the node */}
       <text
-        x="10"
-        y="-4"
-        fill={isDone || isActive ? '#fff' : '#999'}
-        fontSize="11"
+        x="0"
+        y="-34"
+        fill={isLit ? '#ccc' : '#667'}
+        fontSize="10"
         fontWeight="600"
         textAnchor="middle"
+        fontFamily="Rajdhani, sans-serif"
+        letterSpacing="0.5"
       >
         {label}
       </text>
 
-      {/* Sublabel */}
-      {sublabel && (
-        <text
-          x="10"
-          y="12"
-          fill={isDone || isActive ? '#aaa' : '#555'}
-          fontSize="9"
-          textAnchor="middle"
-        >
-          {sublabel}
-        </text>
+      {/* ===== ACTIVE STATE — Wide wave rings + rotating ring + orbiting particles ===== */}
+      {isActive && (
+        <>
+          {/* Large radial glow backdrop */}
+          <circle cx="0" cy="0" r="50" fill="url(#nodeActiveGlow)" />
+
+          {/* Expanding wave ring 1 */}
+          <circle cx="0" cy="0" r="26" fill="none" stroke={nodeColor} strokeWidth="1.5" filter="url(#waveGlow)">
+            <animate attributeName="r" values="26;50;26" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite" />
+          </circle>
+
+          {/* Expanding wave ring 2 (offset) */}
+          <circle cx="0" cy="0" r="26" fill="none" stroke={nodeColor} strokeWidth="1" filter="url(#softGlow)">
+            <animate attributeName="r" values="26;45;26" dur="2s" repeatCount="indefinite" begin="0.5s" />
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite" begin="0.5s" />
+          </circle>
+
+          {/* Expanding wave ring 3 (offset) */}
+          <circle cx="0" cy="0" r="26" fill="none" stroke={nodeColor} strokeWidth="0.7">
+            <animate attributeName="r" values="26;42;26" dur="2s" repeatCount="indefinite" begin="1s" />
+            <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" begin="1s" />
+          </circle>
+
+          {/* Rotating tech ring */}
+          <circle
+            cx="0" cy="0" r="32"
+            fill="none"
+            stroke={nodeColor}
+            strokeWidth="1"
+            strokeDasharray="6 4 2 4"
+            opacity="0.5"
+            className="node-spin-ring"
+          />
+
+          {/* Pulsing glow ring */}
+          <circle
+            cx="0" cy="0" r="28"
+            fill="none" stroke={nodeColor}
+            strokeWidth="1.5" opacity="0.4"
+            className="node-glow"
+          />
+
+          {/* Orbiting energy particles (3 at different speeds) */}
+          <circle r="2.5" fill={nodeColor} opacity="0.9" filter="url(#softGlow)">
+            <animateMotion dur="1.8s" repeatCount="indefinite" path="M 0,-30 A 30,30 0 1,1 -0.01,-30" />
+          </circle>
+          <circle r="1.8" fill="#fff" opacity="0.6" filter="url(#softGlow)">
+            <animateMotion dur="1.8s" repeatCount="indefinite" begin="0.6s" path="M 0,-30 A 30,30 0 1,1 -0.01,-30" />
+          </circle>
+          <circle r="1.2" fill={nodeColor} opacity="0.4">
+            <animateMotion dur="1.8s" repeatCount="indefinite" begin="1.2s" path="M 0,-30 A 30,30 0 1,1 -0.01,-30" />
+          </circle>
+
+          {/* Counter-rotating particle */}
+          <circle r="1.5" fill="#06b6d4" opacity="0.5">
+            <animateMotion dur="2.5s" repeatCount="indefinite" path="M 0,30 A 30,30 0 1,0 0.01,30" />
+          </circle>
+        </>
       )}
 
-      {/* Status indicator */}
+      {/* ===== DONE STATE — Soft persistent glow ===== */}
+      {isDone && (
+        <>
+          <circle cx="0" cy="0" r="40" fill="url(#nodeDoneGlow)" />
+          <circle cx="0" cy="0" r="28" fill="none" stroke="#4ade80" strokeWidth="0.8" opacity="0.3" />
+          {/* Gentle pulse */}
+          <circle cx="0" cy="0" r="26" fill="none" stroke={nodeColor} strokeWidth="0.5" opacity="0.15">
+            <animate attributeName="r" values="26;34;26" dur="4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.15;0;0.15" dur="4s" repeatCount="indefinite" />
+          </circle>
+        </>
+      )}
+
+      {/* ===== ERROR STATE — Red danger waves ===== */}
+      {isError && (
+        <>
+          <circle cx="0" cy="0" r="26" fill="none" stroke="#e74c3c" strokeWidth="1.5">
+            <animate attributeName="r" values="26;40;26" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.6;0;0.6" dur="1s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="0" cy="0" r="26" fill="none" stroke="#e74c3c" strokeWidth="1">
+            <animate attributeName="r" values="26;36;26" dur="1s" repeatCount="indefinite" begin="0.3s" />
+            <animate attributeName="opacity" values="0.4;0;0.4" dur="1s" repeatCount="indefinite" begin="0.3s" />
+          </circle>
+        </>
+      )}
+
+      {/* Node circle */}
+      <circle
+        cx="0" cy="0" r="22"
+        fill={isLit ? `rgba(${nodeRgb},0.12)` : 'rgba(15,15,40,0.8)'}
+        stroke={isLit ? nodeColor : 'rgba(100,100,150,0.25)'}
+        strokeWidth={isActive ? 2.5 : isDone ? 1.5 : 1}
+        className="node-bg"
+      />
+
+      {/* Inner glow circle for active */}
       {isActive && (
-        <circle cx="55" cy="-18" r="4" fill={nodeColor} className="status-pulse" />
+        <circle cx="0" cy="0" r="18" fill={`rgba(${nodeRgb},0.08)`} stroke="none">
+          <animate attributeName="r" values="16;20;16" dur="1.5s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.8;0.3;0.8" dur="1.5s" repeatCount="indefinite" />
+        </circle>
+      )}
+
+      {/* Icon */}
+      <svg x="-10" y="-10" width="20" height="20" viewBox="0 0 24 24" fill={isLit ? nodeColor : '#556'}>
+        {ICONS[icon]}
+      </svg>
+
+      {/* Status indicators */}
+      {isActive && (
+        <circle cx="16" cy="-16" r="4" fill={nodeColor} className="status-pulse" filter="url(#softGlow)">
+          <animate attributeName="opacity" values="1;0.3;1" dur="0.8s" repeatCount="indefinite" />
+        </circle>
       )}
       {isDone && (
-        <svg x="47" y="-24" width="14" height="14" viewBox="0 0 24 24" fill="#4ade80">
-          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-        </svg>
+        <g filter="url(#softGlow)">
+          <svg x="12" y="-26" width="14" height="14" viewBox="0 0 24 24" fill="#4ade80">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+          </svg>
+        </g>
       )}
       {isError && (
-        <svg x="47" y="-24" width="14" height="14" viewBox="0 0 24 24" fill="#e74c3c">
-          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
-        </svg>
+        <g filter="url(#softGlow)">
+          <svg x="12" y="-26" width="14" height="14" viewBox="0 0 24 24" fill="#e74c3c">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" />
+          </svg>
+        </g>
       )}
     </g>
   );
