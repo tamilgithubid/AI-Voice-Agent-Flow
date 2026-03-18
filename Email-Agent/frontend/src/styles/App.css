@@ -1,0 +1,532 @@
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.app-header {
+  text-align: center;
+  padding: 20px 0 10px;
+}
+
+.app-header h1 {
+  font-size: 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.app-header p {
+  color: #888;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+/* Main */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Permission Banner */
+.permission-banner {
+  background: #3a1a1a;
+  border: 1px solid #ef444466;
+  color: #fca5a5;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ========================================
+   AGENT FLOW CANVAS - Animated Pipeline
+   ======================================== */
+
+.agent-flow-canvas {
+  background: #0d0d1a;
+  border: 1px solid #1e1e3a;
+  border-radius: 14px;
+  padding: 14px 10px 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle grid background like n8n */
+.agent-flow-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, #1a1a2e 1px, transparent 0);
+  background-size: 24px 24px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.flow-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #667eea;
+  padding: 0 6px 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.flow-title-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #667eea;
+  animation: flowTitlePulse 2s infinite;
+}
+
+.flow-svg {
+  width: 100%;
+  height: auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* Node animations */
+.agent-node {
+  transition: opacity 0.3s ease;
+}
+
+.agent-node .node-bg {
+  transition: all 0.4s ease;
+}
+
+.agent-node.active .node-bg {
+  animation: nodeActivePulse 1.5s infinite;
+}
+
+.agent-node.done .node-bg {
+  animation: nodeDoneFlash 0.5s ease;
+}
+
+/* Glow ring for active nodes */
+.node-glow {
+  animation: glowPulse 1.5s ease-in-out infinite;
+}
+
+/* Status indicator pulse */
+.status-pulse {
+  animation: statusPulse 1s infinite;
+}
+
+/* Animated dashed connection */
+.connection-active {
+  animation: dashFlow 1s linear infinite;
+}
+
+/* ========================================
+   AGENT FLOW ANIMATIONS
+   ======================================== */
+
+@keyframes flowTitlePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes nodeActivePulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(102, 126, 234, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(102, 126, 234, 0.6));
+  }
+}
+
+@keyframes nodeDoneFlash {
+  0% { filter: brightness(1.5); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes statusPulse {
+  0%, 100% { r: 4; opacity: 1; }
+  50% { r: 6; opacity: 0.5; }
+}
+
+@keyframes dashFlow {
+  to { stroke-dashoffset: -20; }
+}
+
+/* ========================================
+   CHAT WINDOW
+   ======================================== */
+
+.chat-window {
+  flex: 1;
+  min-height: 220px;
+  max-height: 350px;
+  overflow-y: auto;
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.chat-window.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.empty-state {
+  text-align: center;
+  color: #666;
+}
+
+.empty-state p {
+  margin-top: 12px;
+}
+
+.empty-state .example {
+  color: #667eea;
+  font-style: italic;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+/* Messages */
+.message {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+.message.user {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.message.user .message-avatar {
+  background: #667eea;
+  color: white;
+}
+
+.message.assistant .message-avatar {
+  background: #764ba2;
+  color: white;
+}
+
+.message-content {
+  background: #16213e;
+  border-radius: 12px;
+  padding: 10px 14px;
+  max-width: 80%;
+}
+
+.message.user .message-content {
+  background: #1a1a3e;
+  border: 1px solid #667eea33;
+}
+
+.message-content p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #555;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ========================================
+   EMAIL CONFIRMATION
+   ======================================== */
+
+.email-confirmation {
+  background: #1a1a2e;
+  border: 1px solid #667eea44;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.email-confirmation h3 {
+  color: #667eea;
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+
+.email-field {
+  margin-bottom: 10px;
+}
+
+.email-field label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.email-field span {
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.email-field input,
+.email-field textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: #16213e;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.email-field input:focus,
+.email-field textarea:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.email-body {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: #16213e;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.email-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-send {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  flex: 1;
+}
+
+.btn-send:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-cancel {
+  background: #2a2a3e;
+  color: #ccc;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #3a3a4e;
+}
+
+.btn-edit {
+  background: #2a2a3e;
+  color: #667eea;
+}
+
+.btn-edit:hover:not(:disabled) {
+  background: #2a2a4e;
+}
+
+.btn-local {
+  background: #1a3a2e;
+  color: #4ade80;
+  border: 1px solid #4ade8033;
+}
+
+.btn-local:hover:not(:disabled) {
+  background: #1a4a3e;
+  border-color: #4ade8066;
+}
+
+/* ========================================
+   CONTROLS
+   ======================================== */
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+/* Voice Button */
+.voice-button {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.voice-button span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.voice-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+}
+
+.voice-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.voice-button.listening {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  animation: pulse 1.5s infinite;
+}
+
+/* Status Bar */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+.status-bar.listening {
+  color: #e74c3c;
+}
+
+.status-bar.processing {
+  color: #667eea;
+}
+
+.status-bar.sending {
+  color: #f39c12;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blink 1s infinite;
+}
+
+/* ========================================
+   BASE ANIMATIONS
+   ======================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+  50% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+
+.chat-window::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-window::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-window::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 600px) {
+  .app {
+    padding: 12px;
+  }
+  .app-header h1 {
+    font-size: 22px;
+  }
+  .agent-flow-canvas {
+    padding: 10px 4px 6px;
+    overflow-x: auto;
+  }
+  .flow-svg {
+    min-width: 600px;
+  }
+  .email-actions {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,299 @@
+{
+  "name": "AI Agent Flow - Resume Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-agent",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      },
+      "id": "webhook-entry",
+      "name": "Webhook Entry",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "ai-agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input Validation\nconst body = $input.first().json.body;\n\nif (!body || !body.message) {\n  throw new Error('Missing required field: message');\n}\n\nif (typeof body.message !== 'string' || body.message.trim().length === 0) {\n  throw new Error('Message must be a non-empty string');\n}\n\nif (body.message.length > 4000) {\n  throw new Error('Message too long (max 4000 characters)');\n}\n\nreturn [{\n  json: {\n    message: body.message.trim(),\n    userId: body.userId || 'anonymous',\n    threadId: body.threadId || `thread-${Date.now()}`,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'http://localhost:6379' }}",
+        "options": {},
+        "jsCode": "// Fetch memory from Redis (simulated)\n// In production, use the Redis node or HTTP call to your backend\nconst threadId = $input.first().json.threadId;\n\n// Pass through with empty memory if Redis unavailable\nreturn [{\n  json: {\n    ...$input.first().json,\n    conversationHistory: [],\n    memoryFetched: true\n  }\n}];"
+      },
+      "id": "fetch-memory",
+      "name": "Fetch Memory",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an intelligent AI assistant specialized in resume management. You help users with their resumes by providing analysis, suggestions, and improvements.\n\nAvailable tools:\n1. get_resume - Retrieve a user's resume\n2. analyze_resume - Analyze resume for strengths/weaknesses\n3. improve_resume - Generate improvement suggestions\n4. save_resume - Save updated resume\n\nRespond in JSON format:\n{\n  \"response\": \"Your message\",\n  \"action\": null or {\"tool\": \"tool_name\", \"params\": {}},\n  \"metadata\": {\"intent\": \"detected intent\", \"confidence\": 0.0-1.0}\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2048
+        }
+      },
+      "id": "openai-agent",
+      "name": "OpenAI Agent",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [800, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response and determine if tool call is needed\nconst aiResponse = $input.first().json;\nlet parsed;\n\ntry {\n  // Try to parse as JSON\n  const content = aiResponse.message?.content || aiResponse.text || '';\n  parsed = JSON.parse(content);\n} catch (e) {\n  // If not valid JSON, wrap it\n  parsed = {\n    response: aiResponse.message?.content || aiResponse.text || 'I could not process your request.',\n    action: null,\n    metadata: { intent: 'general', confidence: 0.5 }\n  };\n}\n\nreturn [{\n  json: {\n    ...parsed,\n    requiresToolCall: parsed.action !== null && parsed.action !== undefined,\n    originalInput: $input.first().json\n  }\n}];"
+      },
+      "id": "parse-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.requiresToolCall }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-tool-call",
+      "name": "Needs Tool Call?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputIndex": 0, "value": "get_resume" },
+            { "outputIndex": 1, "value": "analyze_resume" },
+            { "outputIndex": 2, "value": "improve_resume" },
+            { "outputIndex": 3, "value": "save_resume" }
+          ]
+        },
+        "value": "={{ $json.action.tool }}"
+      },
+      "id": "tool-router",
+      "name": "Route to Tool",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1400, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'http://localhost:3001/api/resume/' + ($json.action.params.userId || $json.originalInput.userId) }}",
+        "options": {}
+      },
+      "id": "tool-get-resume",
+      "name": "Get Resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1600, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze resume tool\nconst params = $input.first().json.action?.params || {};\nconst resumeData = params.resumeData || {};\n\n// Scoring logic\nconst sections = {};\nlet suggestions = [];\n\nif (resumeData.summary) {\n  const words = resumeData.summary.split(' ').length;\n  sections.summary = { score: words >= 20 ? 85 : 50, feedback: words >= 20 ? 'Good summary' : 'Summary too short' };\n} else {\n  sections.summary = { score: 0, feedback: 'Missing summary' };\n  suggestions.push('Add a professional summary');\n}\n\nif (resumeData.experience?.length > 0) {\n  sections.experience = { score: 75, feedback: `${resumeData.experience.length} positions listed` };\n} else {\n  sections.experience = { score: 0, feedback: 'No experience listed' };\n  suggestions.push('Add work experience');\n}\n\nif (resumeData.skills?.length >= 6) {\n  sections.skills = { score: 85, feedback: 'Good skill variety' };\n} else {\n  sections.skills = { score: 50, feedback: 'Add more skills' };\n}\n\nconst scores = Object.values(sections).map(s => s.score);\nconst overall = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);\n\nreturn [{ json: { success: true, data: { overallScore: overall, sections, suggestions } } }];"
+      },
+      "id": "tool-analyze-resume",
+      "name": "Analyze Resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 250]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Improve resume tool\nconst params = $input.first().json.action?.params || {};\nconst section = params.section || 'general';\n\nconst improvements = {\n  summary: [\n    'Start with years of experience and primary expertise',\n    'Include 2-3 key achievements',\n    'Keep it 2-4 sentences'\n  ],\n  experience: [\n    'Use action verbs (Led, Developed, Implemented)',\n    'Quantify achievements with numbers',\n    'Focus on impact, not responsibilities'\n  ],\n  skills: [\n    'Group skills by category',\n    'List most relevant first',\n    'Include both technical and soft skills'\n  ]\n};\n\nreturn [{ json: { success: true, data: { section, suggestions: improvements[section] || improvements.summary } } }];"
+      },
+      "id": "tool-improve-resume",
+      "name": "Improve Resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3001/api/resume/save",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "resumeData",
+              "value": "={{ JSON.stringify($json.action.params.resumeData) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "tool-save-resume",
+      "name": "Save Resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1600, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format the final response\nconst data = $input.first().json;\n\nlet response;\nif (data.response) {\n  // Direct response (no tool call)\n  response = data.response;\n} else if (data.success !== undefined) {\n  // Tool result — pass back through AI for natural language formatting\n  response = JSON.stringify(data);\n} else {\n  response = 'I processed your request. Is there anything else I can help with?';\n}\n\nreturn [{\n  json: {\n    success: true,\n    data: {\n      response: response,\n      timestamp: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the request and response\nconst data = $input.first().json;\nconsole.log(JSON.stringify({\n  timestamp: new Date().toISOString(),\n  event: 'agent_response',\n  success: data.success,\n  responseLength: data.data?.response?.length || 0\n}));\n\nreturn [$input.first()];"
+      },
+      "id": "logger",
+      "name": "Log Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error handler\nconst error = $input.first().json;\nconsole.error('Workflow error:', JSON.stringify(error));\n\nreturn [{\n  json: {\n    success: false,\n    error: 'An error occurred processing your request',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Entry": {
+      "main": [
+        [{ "node": "Validate Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [{ "node": "Fetch Memory", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch Memory": {
+      "main": [
+        [{ "node": "OpenAI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "OpenAI Agent": {
+      "main": [
+        [{ "node": "Parse AI Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [{ "node": "Needs Tool Call?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Needs Tool Call?": {
+      "main": [
+        [{ "node": "Route to Tool", "type": "main", "index": 0 }],
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Route to Tool": {
+      "main": [
+        [{ "node": "Get Resume", "type": "main", "index": 0 }],
+        [{ "node": "Analyze Resume", "type": "main", "index": 0 }],
+        [{ "node": "Improve Resume", "type": "main", "index": 0 }],
+        [{ "node": "Save Resume", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Resume": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Analyze Resume": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Improve Resume": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Save Resume": {
+      "main": [
+        [{ "node": "Format Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [{ "node": "Log Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Response": {
+      "main": [
+        [{ "node": "Respond to Webhook", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    { "name": "AI Agent", "id": "1" },
+    { "name": "Production", "id": "2" }
+  ]
+}

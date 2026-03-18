@@ -1,0 +1,227 @@
+{
+  "name": "Voice Email Agent - Multi-Agent Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-agent",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Voice Input Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 300],
+      "webhookId": "voice-agent-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-text",
+              "name": "userText",
+              "value": "={{ $json.body.text }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-session",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "assign-timestamp",
+              "name": "timestamp",
+              "value": "={{ $json.body.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "extract-input",
+      "name": "Extract Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an Intent Detection Agent. Analyze the user message and classify the intent.\\n\\nReturn STRICT JSON only:\\n{\\n  \\\"intent\\\": \\\"send_email\\\" | \\\"draft_email\\\" | \\\"chat\\\",\\n  \\\"confidence\\\": 0.0 to 1.0,\\n  \\\"entities\\\": {\\n    \\\"recipient\\\": \\\"extracted name or email\\\",\\n    \\\"topic\\\": \\\"what the email is about\\\",\\n    \\\"urgency\\\": \\\"low\\\" | \\\"medium\\\" | \\\"high\\\"\\n  },\\n  \\\"original_text\\\": \\\"the user's message\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.userText }}\"\n    }\n  ],\n  \"temperature\": 0.1,\n  \"max_tokens\": 512\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "intent-agent",
+      "name": "Agent 1: Intent Detector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [580, 300],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Intent Agent response\nconst items = $input.all();\nconst results = [];\nfor (const item of items) {\n  try {\n    const content = item.json.choices[0].message.content;\n    let parsed;\n    try {\n      parsed = JSON.parse(content);\n    } catch (e) {\n      const match = content.match(/\\{[\\s\\S]*\\}/);\n      parsed = match ? JSON.parse(match[0]) : { intent: 'chat', confidence: 0.5, entities: {} };\n    }\n    results.push({\n      json: {\n        intent: parsed.intent || 'chat',\n        confidence: parsed.confidence || 0.5,\n        entities: parsed.entities || {},\n        originalText: parsed.original_text || item.json.userText || '',\n        sessionId: item.json.sessionId || '',\n      }\n    });\n  } catch (error) {\n    results.push({\n      json: { intent: 'chat', confidence: 0, entities: {}, error: error.message }\n    });\n  }\n}\nreturn results;"
+      },
+      "id": "parse-intent",
+      "name": "Parse Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "id": "is-email",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "send_email",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "action-router",
+      "name": "Action Router",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [980, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a Professional Email Composer Agent. Given the user's intent and details, compose a polished, professional email.\\n\\nReturn STRICT JSON only:\\n{\\n  \\\"to\\\": \\\"email@example.com\\\",\\n  \\\"subject\\\": \\\"Clear, professional subject line\\\",\\n  \\\"body\\\": \\\"Well-written professional email body with greeting and sign-off\\\",\\n  \\\"response\\\": \\\"Brief friendly message to the user about the draft\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Compose an email based on this request: {{ $json.originalText }}\\n\\nDetected recipient: {{ $json.entities.recipient }}\\nTopic: {{ $json.entities.topic }}\\nUrgency: {{ $json.entities.urgency }}\"\n    }\n  ],\n  \"temperature\": 0.4,\n  \"max_tokens\": 1024\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "composer-agent",
+      "name": "Agent 2: Email Composer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 200],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Email Composer response and validate\nconst items = $input.all();\nconst results = [];\nfor (const item of items) {\n  try {\n    const content = item.json.choices[0].message.content;\n    let parsed;\n    try {\n      parsed = JSON.parse(content);\n    } catch (e) {\n      const match = content.match(/\\{[\\s\\S]*\\}/);\n      parsed = match ? JSON.parse(match[0]) : null;\n      if (!parsed) throw new Error('Could not parse composer response');\n    }\n\n    // Validate email fields\n    const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n    const isValidEmail = emailRegex.test(parsed.to || '');\n\n    results.push({\n      json: {\n        action: 'send_email',\n        to: parsed.to || '',\n        subject: parsed.subject || 'No Subject',\n        body: parsed.body || '',\n        response: parsed.response || 'I have drafted an email for you.',\n        requiresConfirmation: true,\n        isValidEmail: isValidEmail,\n        sessionId: item.json.sessionId || '',\n      }\n    });\n  } catch (error) {\n    results.push({\n      json: {\n        action: 'chat',\n        response: 'I had trouble composing the email. Could you please provide more details?',\n        requiresConfirmation: false,\n        error: error.message,\n      }\n    });\n  }\n}\nreturn results;"
+      },
+      "id": "validate-email",
+      "name": "Validator Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a friendly conversational AI assistant. Respond helpfully to general queries. If the user seems to want to send an email but wasn't clear enough, ask clarifying questions. Keep responses concise and friendly.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.originalText }}\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 512\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "chat-agent",
+      "name": "Agent 3: Chat Responder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\nfor (const item of items) {\n  try {\n    const content = item.json.choices[0].message.content;\n    results.push({\n      json: {\n        action: 'chat',\n        response: content,\n        message: content,\n        requiresConfirmation: false,\n      }\n    });\n  } catch (error) {\n    results.push({\n      json: {\n        action: 'chat',\n        response: 'I\\'m here to help! Could you please rephrase that?',\n        message: 'I\\'m here to help! Could you please rephrase that?',\n        requiresConfirmation: false,\n      }\n    });\n  }\n}\nreturn results;"
+      },
+      "id": "format-chat",
+      "name": "Format Chat Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 440]
+    }
+  ],
+  "connections": {
+    "Voice Input Webhook": {
+      "main": [
+        [{ "node": "Extract Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Input": {
+      "main": [
+        [{ "node": "Agent 1: Intent Detector", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agent 1: Intent Detector": {
+      "main": [
+        [{ "node": "Parse Intent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Intent": {
+      "main": [
+        [{ "node": "Action Router", "type": "main", "index": 0 }]
+      ]
+    },
+    "Action Router": {
+      "main": [
+        [{ "node": "Agent 2: Email Composer", "type": "main", "index": 0 }],
+        [{ "node": "Agent 3: Chat Responder", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agent 2: Email Composer": {
+      "main": [
+        [{ "node": "Validator Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agent 3: Chat Responder": {
+      "main": [
+        [{ "node": "Format Chat Response", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": [
+    { "name": "voice-agent" },
+    { "name": "multi-agent" },
+    { "name": "email" },
+    { "name": "groq" }
+  ]
+}

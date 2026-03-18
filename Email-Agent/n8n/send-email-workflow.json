@@ -1,0 +1,150 @@
+{
+  "name": "Voice Agent - Send Email",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "voice-agent-send",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "send-webhook",
+      "name": "Send Email Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "voice-agent-send-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "check-confirmed",
+              "leftValue": "={{ $json.body.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-confirmed",
+      "name": "Is Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.body.emailData.to }}",
+        "subject": "={{ $json.body.emailData.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body.emailData.body }}",
+        "options": {}
+      },
+      "id": "gmail-send",
+      "name": "Gmail - Send Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [660, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "success-msg",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "success-message",
+              "name": "message",
+              "value": "=Email sent successfully to {{ $('Send Email Webhook').first().json.body.emailData.to }}",
+              "type": "string"
+            },
+            {
+              "id": "success-sent",
+              "name": "sent",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cancel-msg",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "cancel-message",
+              "name": "message",
+              "value": "Email sending was cancelled.",
+              "type": "string"
+            },
+            {
+              "id": "cancel-sent",
+              "name": "sent",
+              "value": false,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cancel-response",
+      "name": "Cancel Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [660, 420]
+    }
+  ],
+  "connections": {
+    "Send Email Webhook": {
+      "main": [
+        [{ "node": "Is Confirmed?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Confirmed?": {
+      "main": [
+        [{ "node": "Gmail - Send Email", "type": "main", "index": 0 }],
+        [{ "node": "Cancel Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gmail - Send Email": {
+      "main": [
+        [{ "node": "Success Response", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    { "name": "voice-agent" },
+    { "name": "email" }
+  ]
+}
